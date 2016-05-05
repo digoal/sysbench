@@ -1,15 +1,15 @@
 # 新增的lua
 
 oltp_pg_simple.lua   
-    不使用绑定变量，新增至19条SQL, 包括键值查询，IN查询，范围查询，sum和distinct范围查询, 非键值查询，键值更新，非键值更新，删除，插入。    
+    不使用绑定变量，新增至19条SQL, 包括键值查询，IN查询，范围查询，sum和distinct范围查询,   非键值查询，键值更新，非键值更新，删除，插入。     
 oltp_pg.lua   
-    新增至19条SQL, 包括键值查询，IN查询，范围查询，sum和distinct范围查询, 非键值查询，键值更新，非键值更新，删除，插入。 支持PostgreSQL服务端绑定变量    
+    使用PostgreSQL 服务端绑定变量, 执行SQL与oltp_pg_simple.lua一致。 可以对比是否使用绑定变量的性能差异。    
 oltp_pg_udf.lua   
-    与oltp_pg.lua一一对应，使用postgresql函数处理19条SQL， 与oltp_pg.lua对比，解释网络RT问题.    
+    与oltp_pg.lua执行的SQL一致，但是使用postgresql函数处理19条SQL， 与oltp_pg.lua对比，可以用来判断网络RT问题。      
 parallel_init_pg.lua   
-    支持并行COPY生成测试数据   
-parallel_init_pg_bytbs.lua   
-    支持表空间   
+    支持并行COPY生成测试数据。     
+parallel_init_pg_bytbs.lua    
+    与parallel_init_pg.lua功能一致，但是支持表空间。     
  
 ## 测试rds pg
 
