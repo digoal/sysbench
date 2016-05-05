@@ -55,116 +55,130 @@ function thread_init(thread_id)
    oltp_distinct_ranges = 1   --  query 1 times
    oltp_index_updates = 1     --  query 1 times
    oltp_non_index_updates = 1   --  query 1 times
+
    oltp_range_size = 100        --  query between $1 and $1+100-1
-   oltp_read_only = "false"       -- query delete,update,insert also
+   oltp_read_only = false       -- query delete,update,insert also
 
    begin_query = "BEGIN"
    commit_query = "COMMIT"
 
    table_name = "sbtest" .. (thread_id+1)
 
+   local query
+   local tmp
+
 query = 
-"create or replace function fun_" .. table_name .. [[(
-   oltp_point_selects int,
-   random_points int,
-   oltp_simple_ranges int,
-   oltp_sum_ranges int,
-   oltp_order_ranges int,
-   oltp_distinct_ranges int,
-   oltp_index_updates int,
-   oltp_non_index_updates int,
-   oltp_range_size int,
-   oltp_read_only boolean,
-   oltp_table_size int,
-   c_val text,
-   pad_val text
+"create or replace function fun_" .. table_name .. [[  
+(
+  rand int[],
+  rand_range int[],
+  rand_c_val text[],
+  rand_pad_val text
 ) returns void as $$
-declare
-  i int;
-  vk int;
-  rand int;
-begin
-  -- select c from tbl where id = $1;
-  for i in 1..oltp_point_selects loop
-    rand := abs(trunc(random()*oltp_table_size))::int;
-    perform c from ]] .. table_name .. [[ WHERE id=rand;
-  end loop;
+declare  
+begin  
+]]
+
+  -- select c from tbl where id = $1; 
+  for i=1,oltp_point_selects do
+    tmp = " perform c from " .. table_name .. " WHERE id=rand[" .. i .. "];  "
+    query = query .. tmp
+  end
 
    -- select id,k,c,pad from tbl where id in ($1,...$n);
-   perform id,k,c,pad from ]] .. table_name .. [[ WHERE id in (select abs(trunc(random()*oltp_table_size))::int from generate_series(1, random_points) );
+   tmp = " "
+   for i=oltp_point_selects+1, oltp_point_selects+random_points do
+     tmp = tmp .. "rand[" .. i .. "], "
+   end
+   tmp = string.sub(tmp, 1, string.len(tmp) - 2)
+   query = query .. " perform id,k,c,pad from " .. table_name .. " WHERE id in ( " .. tmp .. " ); "
 
    -- select c from tbl where id between $1 and $2;
-   for i in 1..oltp_simple_ranges loop
-      rand := abs(trunc(random()*oltp_table_size))::int;
-      perform c FROM ]] .. table_name .. [[ WHERE id BETWEEN rand and (rand + oltp_range_size - 1);
-   end loop;
+   for i=1, 2*oltp_simple_ranges, 2 do
+      tmp = " perform c FROM " .. table_name .. " WHERE id BETWEEN rand_range[" .. i .. "] and " .. " rand_range[" .. i+1 .. "]; "
+      query = query .. tmp
+   end
 
    -- select sum(k) from tbl where id between $1 and $2;
-   for i in 1..oltp_sum_ranges loop
-      rand := abs(trunc(random()*oltp_table_size))::int;
-      perform sum(k) FROM ]] .. table_name .. [[ WHERE id BETWEEN rand and (rand + oltp_range_size - 1);
-   end loop;
+   for i=2*oltp_simple_ranges+1, 2*(oltp_simple_ranges+oltp_sum_ranges), 2 do
+      tmp = " perform sum(k) FROM " .. table_name .. " WHERE id BETWEEN rand_range[" .. i .. "] and " .. " rand_range[" .. i+1 .. "]; "
+      query = query .. tmp
+   end
 
    -- select c from tbl where id between $1 and $2 order by c;
-   for i in 1..oltp_order_ranges loop
-      rand := abs(trunc(random()*oltp_table_size))::int;
-      perform c FROM ]] .. table_name .. [[ WHERE id BETWEEN rand and (rand + oltp_range_size - 1) order by c;
-   end loop;
+   for i=2*(oltp_simple_ranges+oltp_sum_ranges)+1, 2*(oltp_simple_ranges+oltp_sum_ranges+oltp_order_ranges), 2 do
+      tmp = " perform c FROM " .. table_name .. " WHERE id BETWEEN rand_range[" .. i .. "] and " .. " rand_range[" .. i+1 .. "] order by c; "
+      query = query .. tmp
+   end
 
    -- select distinct c from tbl where id between $1 and $2 order by c;
-   for i in 1..oltp_distinct_ranges loop
-      rand := abs(trunc(random()*oltp_table_size))::int;
-      perform distinct c FROM ]] .. table_name .. [[ WHERE id BETWEEN rand and (rand + oltp_range_size - 1) order by c;
-   end loop;
+   for i=2*(oltp_simple_ranges+oltp_sum_ranges+oltp_order_ranges)+1, 2*(oltp_simple_ranges+oltp_sum_ranges+oltp_order_ranges+oltp_distinct_ranges), 2 do
+      tmp = " perform distinct c FROM " .. table_name .. " WHERE id BETWEEN rand_range[" .. i .. "] and " .. " rand_range[" .. i+1 .. "] order by c; "
+      query = query .. tmp
+   end
 
-   if oltp_read_only then
-     return;
-   else
-
+   if not oltp_read_only then
      -- update tbl set k=k+1 where id = $1;
-     for i in 1..oltp_index_updates loop
-        rand := abs(trunc(random()*oltp_table_size))::int;
-        update ]] .. table_name .. [[ set k=k+1 where id = rand;
-     end loop;
+     for i=oltp_point_selects+random_points+1, oltp_point_selects+random_points+oltp_index_updates do
+        tmp = " update " .. table_name .. " set k=k+1 where id = rand[" .. i .. "]; "
+        query = query .. tmp
+     end
 
      -- update tbl set c=$2 where id = $1;
-     for i in 1..oltp_non_index_updates loop
-        rand := abs(trunc(random()*oltp_table_size))::int;
-	update ]] .. table_name .. [[ set c=c_val where id = rand;
-     end loop;
-
-     -- delete then insert
-     i := abs(trunc(random()*oltp_table_size))::int;
-     vk := abs(trunc(random()*oltp_table_size))::int;
+     for i=oltp_point_selects+random_points+oltp_index_updates+1, oltp_point_selects+random_points+oltp_index_updates+oltp_non_index_updates do
+        tmp = " update " .. table_name .. " set c=rand_c_val[" .. i-oltp_point_selects-random_points-oltp_index_updates .. "] where id = rand[" .. i .. "]; "
+        query = query .. tmp
+     end
 
      -- delete from tbl where id = $1;
-     delete from ]] .. table_name .. [[ where id = i;
+     tmp = "delete from " .. table_name .. " where id = rand[" .. oltp_point_selects+random_points+oltp_index_updates+oltp_non_index_updates+1 .. "] ; "
+     query = query .. tmp
      -- insert into tbl(id, k, c, pad) values ($1,$2,$3,$4);
-     insert into ]] .. table_name .. [[(id, k, c, pad) values (i,vk,c_val,pad_val);
+     tmp = "insert into " .. table_name .. "(id, k, c, pad) values (rand[" .. oltp_point_selects+random_points+oltp_index_updates+oltp_non_index_updates+1 .. "], rand[" .. oltp_point_selects+random_points+oltp_index_updates+oltp_non_index_updates+2 .. "], rand_c_val[" .. oltp_non_index_updates+1 .. "], rand_pad_val); "
+     query = query .. tmp
+   end
 
-   end if; -- oltp_read_only
-   return;
-end;
-$$ language plpgsql strict;
-]]
+   tmp = [[ return;  end;  $$ language plpgsql strict; ]]
+   query = query .. tmp
 
    db_query(query)
 
-   -- select fun_table_name($1,...$13);
-   db_query("prepare p1(int,int,int,int,int,int,int,int,int,boolean,int,text,text) as SELECT fun_" .. table_name .. "($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)")
+   -- select fun_table_name($1,...$4);
+   db_query("prepare p1(int[],int[],text[],text) as SELECT fun_" .. table_name .. "($1,$2,$3,$4)")
 
 end
 
 function event(thread_id)
-   local c_val
-   local pad_val
+   local rand_cnt = oltp_point_selects+random_points+oltp_index_updates+oltp_non_index_updates+2
+   local rand_cnt_range = 2*(oltp_simple_ranges+oltp_sum_ranges+oltp_order_ranges+oltp_distinct_ranges)
+   local rand_cnt_c_val = oltp_non_index_updates+1
+   local rand="array["
+   local rand_range="array["
+   local range_val
+   local rand_c_val="array['"
+   local rand_pad_val
 
-   c_val = sb_rand_str("###########-###########-###########-###########-###########-###########-###########-###########-###########-###########")
-   pad_val = sb_rand_str("###########-###########-###########-###########-###########")
+   for i=1,rand_cnt do
+     rand = rand .. sb_rand(1, oltp_table_size) .. ", "
+   end
+   rand= string.sub(rand, 1, string.len(rand) - 2) .. "]"
+   
+   for i=1,rand_cnt,2 do
+     range_val = sb_rand(1, oltp_table_size)
+     rand_range = rand_range .. range_val .. ", " .. range_val+oltp_range_size-1 .. ", "
+   end
+   rand_range= string.sub(rand_range, 1, string.len(rand_range) - 2) .. "]"
+
+   for i=1,rand_cnt_c_val do
+     rand_c_val = rand_c_val .. sb_rand_str("###########-###########-###########-###########-###########-###########-###########-###########-###########-###########") .. "', '"
+   end
+   rand_c_val= string.sub(rand_c_val, 1, string.len(rand_c_val) - 3) .. "]"
+
+   rand_pad_val = sb_rand_str("###########-###########-###########-###########-###########")
 
    db_query(begin_query)
 
-   db_query( "execute p1(" .. oltp_point_selects .. "," ..  random_points  .. "," ..  oltp_simple_ranges  .. "," ..  oltp_sum_ranges  .. "," ..  oltp_order_ranges  .. "," ..  oltp_distinct_ranges  .. "," ..  oltp_index_updates  .. "," ..  oltp_non_index_updates  .. "," ..  oltp_range_size  .. ",'" ..  oltp_read_only  .. "'," ..  oltp_table_size  .. ",'" ..  c_val  .. "','" ..  pad_val .. "')" )
+   db_query( "execute p1(" .. rand .. "," ..  rand_range  .. "," ..  rand_c_val  .. ",'" ..  rand_pad_val .. "')" )
 
    db_query(commit_query)
 
