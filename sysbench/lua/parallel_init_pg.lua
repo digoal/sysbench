@@ -70,5 +70,5 @@ function thread_init(thread_id)
 end
 
 function event(thread_id)
-   os.exit()
+   --  os.exit()
 end
