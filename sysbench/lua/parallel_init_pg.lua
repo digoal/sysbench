@@ -59,7 +59,9 @@ end
 function thread_init(thread_id)
    set_vars()
 
-   print("thread prepare"..thread_id)
+   local i
+
+   print("thread prepare  " .. thread_id)
 
    for i=thread_id+1, oltp_tables_count, num_threads  do
      copydata(i)

@@ -81,7 +81,7 @@ function event(thread_id)
 
    -- select id,k,c,pad from tbl where id in ($1,...$n);
    evars = ""
-   for i = 1,random_points do
+   for i=1, random_points do
      evars = evars .. sb_rand(1, oltp_table_size) .. ", "
    end
    evars = string.sub(evars, 1, string.len(evars) - 2)
