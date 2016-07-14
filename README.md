@@ -10,6 +10,9 @@ parallel_init_pg.lua
     支持并行COPY生成测试数据。     
 parallel_init_pg_bytbs.lua    
     与parallel_init_pg.lua功能一致，但是支持表空间。     
+oltp_pg_vs_mysql.lua  
+    测试内容与olpt.lua一致，修改为prepared用法。  
+
  
 ## 测试rds pg
 
