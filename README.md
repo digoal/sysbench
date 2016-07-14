@@ -121,7 +121,7 @@ git clone https://github.com/digoal/sysbench.git
 
 OLTP test statistics:  
     queries performed:  
-        read:                            0  
+        read:                            0  使用服务端绑定变量后,sysbench计数都在other里面,不记在read和write
         write:                           0  
         other:                           566572  
         total:                           566572  
