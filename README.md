@@ -7,9 +7,9 @@ oltp_pg.lua
 oltp_pg_udf.lua   
     与oltp_pg.lua执行的SQL一致，但是使用postgresql函数处理19条SQL， 与oltp_pg.lua对比，可以用来判断网络RT问题。      
 parallel_init_pg.lua   
-    支持并行COPY生成测试数据。     
+    并行COPY生成测试数据。     
 parallel_init_pg_bytbs.lua    
-    与parallel_init_pg.lua功能一致，但是支持表空间。     
+    与parallel_init_pg.lua功能一致，同时支持表空间，需要预定义好表空间。     
 oltp_pg_vs_mysql.lua  
     测试内容与olpt.lua一致，修改为prepared用法。  
 
