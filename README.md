@@ -136,8 +136,9 @@ Threads fairness:
     events (avg/stddev):           1685.7500/85.94  
     execution time (avg/stddev):   119.9826/0.02  
 ```
-测试自建PostgreSQL  
-
+  
+## 测试自建PostgreSQL  
+  
 创建表空间，可以在每个块设备对应的文件系统中创建一个表空间，均分IO  
 表空间命名规则tbs0,tbs1,...  
 修改lua/parallel_init_pg_bytbs.lua, 设置一致的表空间数目  
@@ -174,8 +175,9 @@ tbs=3
   run  
 ```
 其他测试方法与测试rds pg一致。  
-
-## 自定义lua脚本建议    
+  
+## 自定义lua脚本建议  
+  
 建议使用run调用, init单个线程只调用一次，event多次调用。  
 cleanup根据提供的线程和表的数量DROP表.  
 
